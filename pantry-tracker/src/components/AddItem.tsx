@@ -1,9 +1,7 @@
 // src/components/AddItemForm.tsx
-
-"use client";
-
 import React, { useState } from 'react';
-import { db, collection, addDoc } from '../lib/firebase';
+import db from '../lib/firestore';
+import { collection, addDoc } from "firebase/firestore"; 
 import { TextField, Button, Container } from '@mui/material';
 
 const AddItemForm: React.FC = () => {

@@ -1,4 +1,6 @@
 // app/page.tsx
+"use client"
+
 import React from "react";
 import Divider from '@mui/material/Divider';
 import Header from "../components/Header";

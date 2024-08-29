@@ -1,7 +1,5 @@
 // src/lib/firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
-import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Your Firebase configuration object
 const firebaseConfig = {
@@ -16,13 +14,5 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-// Check if analytics is supported
-isSupported().then((supported) => {
-  if (supported) {
-    const analytics = getAnalytics(app);
-  }
-});
-
-export { db, collection, addDoc };
+export default app; 
