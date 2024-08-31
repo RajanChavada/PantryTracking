@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Card as MuiCard, CardContent, Typography } from "@mui/material";
-import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, getDoc } from "firebase/firestore";
 import db from "../lib/firestore";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
@@ -8,6 +8,7 @@ import Alert from "@mui/material/Alert";
 import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 
+// Define the PantryItem interface
 interface PantryItem {
   id: string;
   name: string;
@@ -24,10 +25,10 @@ export default function DisplayItems() {
     const fetchItems = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "pantryItems"));
-        const itemsList: PantryItem[] = querySnapshot.docs.map((doc) => ({
+        const itemsList = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data() as Omit<PantryItem, 'id'>, // Type assertion for data
-        }));
+          ...doc.data(),
+        })) as PantryItem[]; // Cast data to PantryItem[]
         setItems(itemsList);
       } catch (error) {
         console.error("Error fetching pantry items: ", error);
@@ -37,48 +38,58 @@ export default function DisplayItems() {
     fetchItems();
   }, []);
 
-  const handleIncrement = async (id: string, currentQuantity: number) => {
+  const handleDelete = async (id: string) => {
     try {
-      const newQuantity = currentQuantity + 1;
-      await updateDoc(doc(db, "pantryItems", id), {
-        quantity: newQuantity,
-      });
-      setItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === id
-            ? { ...item, quantity: newQuantity }
-            : item
-        )
-      );
+      await deleteDoc(doc(db, "pantryItems", id));
+      setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+      setSnackbarMessage("Item successfully deleted!");
+      setSnackbarType("success");
     } catch (error) {
-      console.error("Error incrementing item quantity", error);
-      setSnackbarMessage("Error incrementing quantity. Please try again.");
+      console.error("Error deleting item", error);
+      setSnackbarMessage("Error deleting item. Please try again.");
       setSnackbarType("error");
     } finally {
       setSnackbarOpen(true);
     }
   };
 
-  const handleDecrement = async (id: string, currentQuantity: number) => {
-    if (currentQuantity <= 0) return; // Prevent decrementing below 0
+  const handleIncrement = async (id: string) => {
     try {
-      const newQuantity = currentQuantity - 1;
-      await updateDoc(doc(db, "pantryItems", id), {
-        quantity: newQuantity,
-      });
-      setItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === id
-            ? { ...item, quantity: newQuantity }
-            : item
-        )
-      );
+      const itemRef = doc(db, "pantryItems", id);
+      const itemDoc = await getDoc(itemRef);
+      if (itemDoc.exists()) {
+        const itemData = itemDoc.data() as PantryItem;
+        const newQuantity = (itemData.quantity || 0) + 1;
+        await updateDoc(itemRef, { quantity: newQuantity });
+
+        setItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === id ? { ...item, quantity: newQuantity } : item
+          )
+        );
+      }
     } catch (error) {
-      console.error("Error decrementing item quantity", error);
-      setSnackbarMessage("Error decrementing quantity. Please try again.");
-      setSnackbarType("error");
-    } finally {
-      setSnackbarOpen(true);
+      console.error("Error incrementing quantity: ", error);
+    }
+  };
+
+  const handleDecrement = async (id: string) => {
+    try {
+      const itemRef = doc(db, "pantryItems", id);
+      const itemDoc = await getDoc(itemRef);
+      if (itemDoc.exists()) {
+        const itemData = itemDoc.data() as PantryItem;
+        const newQuantity = Math.max((itemData.quantity || 0) - 1, 0);
+        await updateDoc(itemRef, { quantity: newQuantity });
+
+        setItems((prevItems) =>
+          prevItems.map((item) =>
+            item.id === id ? { ...item, quantity: newQuantity } : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error decrementing quantity: ", error);
     }
   };
 
@@ -96,7 +107,7 @@ export default function DisplayItems() {
             Pantry List
           </Typography>
           <Typography variant="body2">List of Pantry Items</Typography>
-          {items.map((item, index) => (
+          {items.map((item) => (
             <div key={item.id}>
               <MuiCard
                 sx={{
@@ -108,16 +119,16 @@ export default function DisplayItems() {
               >
                 <CardContent>
                   <Typography variant="h6" component="div">
-                    Pantry Item: {index + 1}
+                    Pantry Item: {item.name}
                   </Typography>
                   <Typography>
-                    {item.name}: {item.quantity}
+                    Quantity: {item.quantity}
                   </Typography>
                   <Button
                     variant="outlined"
                     color="primary"
                     style={{ marginRight: "10px" }}
-                    onClick={() => handleIncrement(item.id, item.quantity)}
+                    onClick={() => handleIncrement(item.id)}
                   >
                     <AddIcon />
                   </Button>
@@ -125,7 +136,7 @@ export default function DisplayItems() {
                     variant="outlined"
                     color="primary"
                     style={{ marginRight: "10px" }}
-                    onClick={() => handleDecrement(item.id, item.quantity)}
+                    onClick={() => handleDecrement(item.id)}
                   >
                     <RemoveIcon />
                   </Button>
