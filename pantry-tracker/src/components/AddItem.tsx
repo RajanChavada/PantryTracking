@@ -1,12 +1,14 @@
-// src/components/AddItemForm.tsx
 import React, { useState } from 'react';
 import db from '../lib/firestore';
 import { collection, addDoc } from "firebase/firestore"; 
-import { TextField, Button, Container } from '@mui/material';
+import { TextField, Button, Container, Snackbar, Alert } from '@mui/material';
 
 const AddItemForm: React.FC = () => {
   const [itemName, setItemName] = useState('');
   const [itemQuantity, setItemQuantity] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,13 +18,24 @@ const AddItemForm: React.FC = () => {
         quantity: itemQuantity,
         createdAt: new Date(),
       });
-      console.log("Sent"); 
+      setSnackbarMessage('Item successfully added!');
+      setSnackbarType('success');
       setItemName('');
       setItemQuantity('');
     } catch (error) {
       console.error("Error adding document: ", error);
-      
+      setSnackbarMessage('Error adding item. Please try again.');
+      setSnackbarType('error');
+    } finally {
+      setSnackbarOpen(true);
+      setTimeout(() => {
+        window.location.reload(); // Or trigger a state update in a parent component
+      }, 1500); // Delay in milliseconds (3000ms = 3 seconds)
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
   };
 
   return (
@@ -48,6 +61,22 @@ const AddItemForm: React.FC = () => {
           Add Item
         </Button>
       </form>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbarType}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
