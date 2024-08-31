@@ -1,24 +1,32 @@
 import * as React from "react";
 import { Card as MuiCard, CardContent, Typography } from "@mui/material";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import db from "../lib/firestore";
-import Button from '@mui/material/Button';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
+import Button from "@mui/material/Button";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import RemoveIcon from "@mui/icons-material/Remove";
+import AddIcon from "@mui/icons-material/Add";
+
+interface PantryItem {
+  id: string;
+  name: string;
+  quantity: number;
+}
 
 export default function DisplayItems() {
-  const [items, setItems] = React.useState([]);
+  const [items, setItems] = React.useState<PantryItem[]>([]);
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
-  const [snackbarMessage, setSnackbarMessage] = React.useState('');
-  const [snackbarType, setSnackbarType] = React.useState<'success' | 'error'>('success');
+  const [snackbarMessage, setSnackbarMessage] = React.useState("");
+  const [snackbarType, setSnackbarType] = React.useState<"success" | "error">("success");
 
   React.useEffect(() => {
     const fetchItems = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "pantryItems"));
-        const itemsList = querySnapshot.docs.map((doc) => ({
+        const itemsList: PantryItem[] = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data() as Omit<PantryItem, 'id'>, // Type assertion for data
         }));
         setItems(itemsList);
       } catch (error) {
@@ -29,16 +37,46 @@ export default function DisplayItems() {
     fetchItems();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleIncrement = async (id: string, currentQuantity: number) => {
     try {
-      await deleteDoc(doc(db, "pantryItems", id));
-      setItems((prevItems) => prevItems.filter((item) => item.id !== id));
-      setSnackbarMessage('Item successfully deleted!');
-      setSnackbarType('success');
+      const newQuantity = currentQuantity + 1;
+      await updateDoc(doc(db, "pantryItems", id), {
+        quantity: newQuantity,
+      });
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id
+            ? { ...item, quantity: newQuantity }
+            : item
+        )
+      );
     } catch (error) {
-      console.error("Error deleting item", error);
-      setSnackbarMessage('Error deleting item. Please try again.');
-      setSnackbarType('error');
+      console.error("Error incrementing item quantity", error);
+      setSnackbarMessage("Error incrementing quantity. Please try again.");
+      setSnackbarType("error");
+    } finally {
+      setSnackbarOpen(true);
+    }
+  };
+
+  const handleDecrement = async (id: string, currentQuantity: number) => {
+    if (currentQuantity <= 0) return; // Prevent decrementing below 0
+    try {
+      const newQuantity = currentQuantity - 1;
+      await updateDoc(doc(db, "pantryItems", id), {
+        quantity: newQuantity,
+      });
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === id
+            ? { ...item, quantity: newQuantity }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error("Error decrementing item quantity", error);
+      setSnackbarMessage("Error decrementing quantity. Please try again.");
+      setSnackbarType("error");
     } finally {
       setSnackbarOpen(true);
     }
@@ -59,7 +97,7 @@ export default function DisplayItems() {
           </Typography>
           <Typography variant="body2">List of Pantry Items</Typography>
           {items.map((item, index) => (
-            <div key={index}>
+            <div key={item.id}>
               <MuiCard
                 sx={{
                   width: "100%",
@@ -77,11 +115,27 @@ export default function DisplayItems() {
                   </Typography>
                   <Button
                     variant="outlined"
+                    color="primary"
+                    style={{ marginRight: "10px" }}
+                    onClick={() => handleIncrement(item.id, item.quantity)}
+                  >
+                    <AddIcon />
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    style={{ marginRight: "10px" }}
+                    onClick={() => handleDecrement(item.id, item.quantity)}
+                  >
+                    <RemoveIcon />
+                  </Button>
+                  <Button
+                    variant="outlined"
                     color="error"
                     style={{ float: "right", padding: "5px", margin: "20px" }}
                     onClick={() => handleDelete(item.id)}
                   >
-                    Delete Item
+                    Delete Whole Item
                   </Button>
                 </CardContent>
               </MuiCard>
@@ -95,12 +149,12 @@ export default function DisplayItems() {
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={handleCloseSnackbar}
           severity={snackbarType}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbarMessage}
         </Alert>
