@@ -1,6 +1,8 @@
 // src/lib/firebase.ts
 import { initializeApp } from 'firebase/app';
 
+import { getAnalytics, isSupported } from 'firebase/analytics';
+
 // Your Firebase configuration object
 const firebaseConfig = {
     apiKey: "AIzaSyB80fTf2Y2uaVDU-AUAN9sJNYqUTAr4l60",
