@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   const prompt = reqBody.data.prompt;
 
   const openai = new OpenAI({
-    apiKey: "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",
+    apiKey: APIKEY,
     baseURL: 'https://api.groq.com/openai/v1',
   });
 
